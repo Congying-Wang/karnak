@@ -13,4 +13,6 @@ public interface ProfileItem {
     String getCodeName();
 
     ProfileItem getProfileParent();
+
+    Boolean isKeep(DicomElement dcmElem);
 }

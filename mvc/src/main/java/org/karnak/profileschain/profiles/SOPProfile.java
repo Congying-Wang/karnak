@@ -1,6 +1,7 @@
 package org.karnak.profileschain.profiles;
 
 import org.dcm4che6.data.DicomElement;
+import org.dcm4che6.data.Tag;
 import org.karnak.profileschain.action.Action;
 import org.karnak.profileschain.parser.SOPParser;
 
@@ -22,6 +23,13 @@ public class SOPProfile extends AbstractProfileItem {
             return sopMap.get(tag);
         }
         return -1;
+    }
+    @Override
+    public Boolean isKeep(DicomElement dcmElem) {
+        if ((dcmElem.tag() & Tag.OverlayData) != 0) {
+            return false;
+        }
+        return this.getParentKeep(dcmElem);
     }
 
     @Override

@@ -11,6 +11,14 @@ public class UpdateUIDsProfile extends AbstractProfileItem {
     }
 
     @Override
+    public Boolean isKeep(DicomElement dcmElem) {
+        if (dcmElem.vr() == VR.UI) {
+            return true;
+        }
+        return this.getParentKeep(dcmElem);
+    }
+
+    @Override
     public Action getAction(DicomElement dcmElem) {
         if (dcmElem.vr() == VR.UI) {
             return Action.UID;

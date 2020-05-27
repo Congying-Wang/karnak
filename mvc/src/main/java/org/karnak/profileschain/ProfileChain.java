@@ -12,7 +12,6 @@ import org.karnak.profileschain.action.ActionStrategy;
 import org.karnak.profileschain.profilebody.ProfileBody;
 import org.karnak.profileschain.profilebody.ProfileChainBody;
 import org.karnak.profileschain.profiles.AbstractProfileItem;
-import org.karnak.profileschain.profiles.BasicDicomProfile;
 import org.karnak.profileschain.profiles.ProfileItem;
 import org.karnak.profileschain.utils.HMAC;
 import org.slf4j.Logger;
@@ -115,14 +114,18 @@ public class ProfileChain {
         }
         for (Iterator<DicomElement> iterator = dcm.iterator(); iterator.hasNext(); ) {
             DicomElement dcmEl = iterator.next();
-            final Action action = this.profile.getAction(dcmEl);
-            try {
-                ActionStrategy.Output out = action.execute(dcm, dcmEl.tag(), patientName, null);
-                if (out == ActionStrategy.Output.TO_REMOVE) {
-                    iterator.remove();
+            if (this.profile.isKeep(dcmEl)) {
+                final Action action = this.profile.getAction(dcmEl);
+                try {
+                    ActionStrategy.Output out = action.execute(dcm, dcmEl.tag(), patientName, null);
+                    if (out == ActionStrategy.Output.TO_REMOVE) {
+                        iterator.remove();
+                    }
+                } catch (final Exception e) {
+                    LOGGER.error("Cannot execute the action {}", action, e);
                 }
-            } catch (final Exception e) {
-                LOGGER.error("Cannot execute the action {}", action, e);
+            } else {
+                iterator.remove();
             }
         }
         String profileFilename = profileChainYml.getName();

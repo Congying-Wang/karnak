@@ -11,6 +11,14 @@ public class PrivateTagsProfile extends AbstractProfileItem {
     }
 
     @Override
+    public Boolean isKeep(DicomElement dcmElem) {
+        if (TagUtils.isPrivateGroup(dcmElem.tag())) {
+            return false;
+        }
+        return this.getParentKeep(dcmElem);
+    }
+
+    @Override
     public Action getAction(DicomElement dcmElem) {
         if (TagUtils.isPrivateGroup(dcmElem.tag())) {
             return Action.REMOVE;

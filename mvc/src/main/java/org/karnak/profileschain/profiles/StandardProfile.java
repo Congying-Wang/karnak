@@ -24,6 +24,18 @@ public class StandardProfile extends AbstractProfileItem {
     }
 
     @Override
+    public Boolean isKeep(DicomElement dcmElem) {
+        int tag = dcmElem.tag();
+        if (tagList.get(tag) != null) {
+            return true;
+        }
+        if (TagUtils.isPrivateGroup(tag)) {
+            return false;
+        }
+        return this.getParentKeep(dcmElem);
+    }
+
+    @Override
     public Action getAction(DicomElement dcmElem) {
         int tag = dcmElem.tag();
         Action action = tagList.get(tag);

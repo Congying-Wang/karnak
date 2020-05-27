@@ -12,6 +12,14 @@ public class OverlaysProfile extends AbstractProfileItem {
     }
 
     @Override
+    public Boolean isKeep(DicomElement dcmElem) {
+        if ((dcmElem.tag() & Tag.OverlayData) != 0) {
+            return false;
+        }
+        return this.getParentKeep(dcmElem);
+    }
+
+    @Override
     public Action getAction(DicomElement dcmElem) {
         // TODO implement all required tags
         if ((dcmElem.tag() & Tag.OverlayData) != 0) {

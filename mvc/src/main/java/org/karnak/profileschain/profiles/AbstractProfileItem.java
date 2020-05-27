@@ -72,6 +72,13 @@ public abstract class AbstractProfileItem implements ProfileItem {
         return Action.REMOVE;
     }
 
+    public Boolean getParentKeep(DicomElement dcmElem) {
+        if (this.profileParent != null) {
+            return this.profileParent.isKeep(dcmElem);
+        }
+        return false;
+    }
+
     @Override
     public String toString() {
         return name;
