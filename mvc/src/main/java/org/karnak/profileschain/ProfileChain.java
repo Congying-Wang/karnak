@@ -113,16 +113,19 @@ public class ProfileChain {
         }
     }
 
-    public void applyAction(DicomObject dcm, String patientID) {
-        for (Iterator<DicomElement> iterator = dcm.iterator(); iterator.hasNext(); ) {
+    public DicomObject applyAction(DicomObject dcm, String patientID) {
+        DicomObject dcmDeident = DicomObject.newDicomObject();
+        dcm.elementStream().forEach(dcmDeident::add);
+
+        for (Iterator<DicomElement> iterator = dcmDeident.iterator(); iterator.hasNext(); ) {
             DicomElement dcmEl = iterator.next();
             final Action action = this.profile.getAction(dcmEl);
             try {
-                final String tagValueIn = dcm.getString(dcmEl.tag()).orElse(null);
-                ActionStrategy.Output out = action.execute(dcm, dcmEl.tag(), patientID, null);
+                final String tagValueIn = dcmDeident.getString(dcmEl.tag()).orElse(null);
+                ActionStrategy.Output out = action.execute(dcmDeident, dcmEl.tag(), patientID, null);
                 getSequence(dcmEl, patientID, out);
 
-                final String tagValueOut = dcm.getString(dcmEl.tag()).orElse(null);
+                final String tagValueOut = dcmDeident.getString(dcmEl.tag()).orElse(null);
                 if (out == ActionStrategy.Output.TO_REMOVE) {
                     iterator.remove();
                     LOGGER.info(CLINICAL_MARKER, PATTERN_WITH_IN, TagUtils.toString(dcmEl.tag()), dcmEl.tag(), action.getSymbol(), tagValueIn);
@@ -136,6 +139,7 @@ public class ProfileChain {
                 LOGGER.error("Cannot execute the action {}", action, e);
             }
         }
+        return dcmDeident;
     }
 
     public void apply(DicomObject dcm) {
@@ -154,8 +158,8 @@ public class ProfileChain {
             throw new IllegalStateException("Cannot build a pseudonym");
         }
 
-        applyAction(dcm, patientID);
-
+        DicomObject dcmDeident = applyAction(dcm, patientID);
+        dcm = dcmDeident;
         setDefaultDeidentTagValue(dcm, patientID, profileChainCodeName, pseudonym);
     }
 
