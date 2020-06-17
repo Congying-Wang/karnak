@@ -5,7 +5,5 @@ import org.karnak.profileschain.ProfileChain;
 
 @FunctionalInterface
 public interface ActionStrategy {
-    enum Output {TO_REMOVE, APPLIED, NEXT_PROFILE, PRESERVED}
-
-    Output execute(DicomObject dcm, int tag, String pseudo, String dummy);
+    String execute(DicomObject dcm, int tag, String pseudo, String dummy);
 }

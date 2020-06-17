@@ -9,16 +9,7 @@ import java.util.Optional;
 
 public enum Action implements ActionStrategy {
 
-    REPLACE("D", (dcm, tag, pseudo, dummy) -> {
-        dcm.get(tag).ifPresent(dcmEl -> {
-            if (dummy != null) {
-                dcm.setString(tag, dcmEl.vr(), dummy);
-            } else {
-                dcm.setNull(tag, dcmEl.vr());
-            }
-        });
-        return Output.APPLIED;
-    }),
+    REPLACE("D", (dcm, tag, pseudo, dummy) -> dummy),
 
     DEFAULT_DUMMY("DDum", (dcm, tag, pseudo, dummy) -> {
         final String tagValue = dcm.getString(tag).orElse(null);
@@ -38,23 +29,19 @@ public enum Action implements ActionStrategy {
         return REPLACE.execute(dcm, tag, pseudo, defaultDummyValue);
     }),
 
-    KEEP("K", (dcm, tag, pseudo, dummy) -> Output.PRESERVED),
-
-    REMOVE("X", (dcm, tag, pseudo, dummy) -> Output.TO_REMOVE),
-
-    REPLACE_NULL("Z", (dcm, tag, pseudo, dummy) -> {
-        dcm.get(tag).ifPresent(dcmEl -> {
-            dcm.setNull(tag, dcmEl.vr());
-        });
-        return Output.APPLIED;
+    KEEP("K", (dcm, tag, pseudo, dummy) -> {
+        String keepValue = dcm.getString(tag).orElse(null);
+        return keepValue;
     }),
+
+    REMOVE("X", (dcm, tag, pseudo, dummy) -> null),
+
+    REPLACE_NULL("Z", (dcm, tag, pseudo, dummy) -> null),
 
     UID("U", (dcm, tag, pseudo, dummy) -> {
         String uidValue = dcm.getString(tag).orElse(null);
         String uidHashed = AppConfig.getInstance().getHmac().uidHash(pseudo, uidValue);
-        System.out.println(uidValue + " - " + uidHashed);
-        dcm.setString(tag, VR.UI, uidHashed);
-        return Output.APPLIED;
+        return uidHashed;
     });
 
     private final String symbol;
@@ -70,7 +57,7 @@ public enum Action implements ActionStrategy {
     }
 
     @Override
-    public Output execute(DicomObject dcm, int tag, String pseudo, String dummy) {
+    public String execute(DicomObject dcm, int tag, String pseudo, String dummy) {
         return action.execute(dcm, tag, pseudo, dummy);
     }
 }

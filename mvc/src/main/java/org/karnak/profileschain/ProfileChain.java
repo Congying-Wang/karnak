@@ -5,6 +5,7 @@ import org.dcm4che6.data.DicomElement;
 import org.dcm4che6.data.DicomObject;
 import org.dcm4che6.data.Tag;
 import org.dcm4che6.data.VR;
+import org.dcm4che6.io.DicomInputStream;
 import org.dcm4che6.util.TagUtils;
 import org.karnak.api.PseudonymApi;
 import org.karnak.api.rqbody.Fields;
@@ -103,43 +104,54 @@ public class ProfileChain {
         return pseudonym;
     }
 
-    public void getSequence(DicomElement dcmEl, String patientName, ActionStrategy.Output output) {
-        final VR vr = dcmEl.vr();
-        if (vr == VR.SQ && output != ActionStrategy.Output.TO_REMOVE) {
-            List<DicomObject> ldcm = dcmEl.itemStream().collect(Collectors.toList());
-            for (DicomObject dcm: ldcm) {
-                applyAction(dcm, patientName);
-            }
+    public DicomElement getSequence(DicomElement dcmEl, DicomObject dcmDeident, String patientName, Action action) {
+        DicomElement dcmElemSequences = DicomObject.newDicomObject().newDicomSequence(dcmEl.tag());
+        List<DicomObject> ldcm = dcmEl.itemStream().collect(Collectors.toList());
+        for (DicomObject dcm: ldcm) {
+            DicomObject dcmObjSequence = applyAllAction(dcm, patientName);;
+            dcmElemSequences.addItem(dcmObjSequence);
         }
+        return dcmElemSequences;
     }
 
-    public DicomObject applyAction(DicomObject dcm, String patientID) {
-        DicomObject dcmDeident = DicomObject.newDicomObject();
-        dcm.elementStream().forEach(dcmDeident::add);
 
-        for (Iterator<DicomElement> iterator = dcmDeident.iterator(); iterator.hasNext(); ) {
+
+    public DicomObject applyAllAction(DicomObject dcm, String patientID) {
+        DicomObject dcmNew = DicomObject.newDicomObject();
+        for (Iterator<DicomElement> iterator = dcm.iterator(); iterator.hasNext(); ) {
             DicomElement dcmEl = iterator.next();
+            final String tagValueIn = dcm.getString(dcmEl.tag()).orElse(null);
             final Action action = this.profile.getAction(dcmEl);
-            try {
-                final String tagValueIn = dcmDeident.getString(dcmEl.tag()).orElse(null);
-                ActionStrategy.Output out = action.execute(dcmDeident, dcmEl.tag(), patientID, null);
-                getSequence(dcmEl, patientID, out);
+            if(action != Action.REMOVE){
+                try {
 
-                final String tagValueOut = dcmDeident.getString(dcmEl.tag()).orElse(null);
-                if (out == ActionStrategy.Output.TO_REMOVE) {
-                    iterator.remove();
-                    LOGGER.info(CLINICAL_MARKER, PATTERN_WITH_IN, TagUtils.toString(dcmEl.tag()), dcmEl.tag(), action.getSymbol(), tagValueIn);
-                }else{
+                    final String tagValueOut = action.execute(dcm, dcmEl.tag(), patientID, null);
+
+                    if (dcmEl.vr() == VR.SQ && action == Action.KEEP) {
+                        DicomElement dcmElemSequences = getSequence(dcmEl, dcmNew, patientID, action);
+                        dcmNew.add(dcmElemSequences);
+                    }else{
+                        if(tagValueOut != null){
+                            dcmNew.setString(dcmEl.tag(), dcmEl.vr(), tagValueOut);
+                        }else{
+                            dcmNew.setNull(dcmEl.tag(), dcmEl.vr());
+                        }
+                    }
+
+                    // Problem
+                    //dcmNew.setFloat(1610532, VR.FD, 0.0f);
+                    //dcmNew.setString(1610532, VR.FD, "0.0");
+
                     LOGGER.info(CLINICAL_MARKER, PATTERN_WITH_INOUT, TagUtils.toString(dcmEl.tag()), dcmEl.tag(), action.getSymbol(), tagValueIn, tagValueOut);
+                } catch (final Exception e) {
+                    LOGGER.error("Cannot execute the action {}", action, e);
                 }
-
-
-
-            } catch (final Exception e) {
-                LOGGER.error("Cannot execute the action {}", action, e);
+            }else{
+                LOGGER.info(CLINICAL_MARKER, PATTERN_WITH_IN, TagUtils.toString(dcmEl.tag()), dcmEl.tag(), action.getSymbol(), tagValueIn);
             }
+
         }
-        return dcmDeident;
+        return dcmNew;
     }
 
     public void apply(DicomObject dcm) {
@@ -158,7 +170,7 @@ public class ProfileChain {
             throw new IllegalStateException("Cannot build a pseudonym");
         }
 
-        DicomObject dcmDeident = applyAction(dcm, patientID);
+        DicomObject dcmDeident = applyAllAction(dcm, patientID);
         dcm = dcmDeident;
         setDefaultDeidentTagValue(dcm, patientID, profileChainCodeName, pseudonym);
     }
